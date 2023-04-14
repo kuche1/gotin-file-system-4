@@ -1,7 +1,6 @@
 
 // TODO
-// use `int32_t` instead of `int`
-// ESPECIALLY WHEN ACCESSING DISK
+// use `int32_t` instead of `int` for structs that are written-read from disk
 
 #include <stdio.h>
 #include <stdint.h>
@@ -27,10 +26,12 @@ enum{
 ////////////////////////// struct
 
 struct storage{
-    int32_t num_disks;
+    int num_disks;
     struct disk *disks;
 
-    int num_free_blocks;
+    // circular buffer
+    int free_blocks_start; // at which idx the next free block is located
+    int free_blocks_end; // at which idx the last free block is located
     struct block **free_blocks;
 };
 
@@ -49,13 +50,18 @@ struct block_info{
 };
 
 struct block_data{
-    char data[BLOCKSIZE_DATA];
+    char data[BLOCKSIZE_DATA]; // TODO delete?
 };
 
 struct block{
     struct block_info info;
     struct block_data *data; // TODO no need?
 };
+
+// struct file{
+//     char name[10];
+//     block_offset_t first_block;
+// }
 
 ////////////////////////// function
 

@@ -9,7 +9,7 @@ int gfs_init(int disks, char **locations){
     int err = 0;
 
     storage.num_disks = 0;
-    storage.free_blocks = 0;
+    storage.free_blocks = NULL;
 
     if(!MALLOC_AND_SET(storage.disks, disks)){
         err = ERR_MALLOC;
@@ -67,39 +67,42 @@ int gfs_init(int disks, char **locations){
         }
     }
 
-    // get number of free blocks
-    storage.num_free_blocks = 0;
+    // allocate enough memory for free blocks arr; assume that 100% of blocks could be free
+    int total_blocks = 0;
     for(int di=0; di<storage.num_disks; ++di){
-        struct disk *disk = &(storage.disks[di]);
-        for(int bi=0; bi<disk->num_blocks; ++bi){
-            struct block *block = &(disk->blocks[bi]);
-            struct block_info *block_info = &(block->info);
-            if(block_info->next_block == BLOCK_NEXT_FREE){
-                storage.num_free_blocks += 1;
-            }
-        }
+        total_blocks += storage.disks[di].num_blocks;
     }
 
-    // allocate memory to free blocks
-    if(!MALLOC_AND_SET(storage.free_blocks, storage.num_free_blocks)){
+    // allocate free block arr
+    if(!MALLOC_AND_SET(storage.free_blocks, total_blocks)){
         err = ERR_MALLOC;
         goto err;
     }
 
-    // assign to free blocks
-    int free_block_idx = 0;
-    for(int di=0; di<storage.num_disks; ++di){
-        struct disk *disk = &(storage.disks[di]);
-        for(int bi=0; bi<disk->num_blocks; ++bi){
+    // get number of free blocks and assign in order of disk1->disk2->disk3->...->disk1
+    storage.free_blocks_start = 0;
+    storage.free_blocks_end = 0;
+    for(int bi=0;; ++bi){
+        int at_least_one_disk_available = 0;
+        for(int di=0; di<storage.num_disks; ++di){
+            struct disk *disk = &(storage.disks[di]);
+            if(bi >= disk->num_blocks){
+                break;
+            }
+            at_least_one_disk_available = 1;
             struct block *block = &(disk->blocks[bi]);
             struct block_info *block_info = &(block->info);
             if(block_info->next_block == BLOCK_NEXT_FREE){
-                storage.free_blocks[free_block_idx] = block;
+                storage.free_blocks[storage.free_blocks_end] = block;
+                storage.free_blocks_end += 1;
             }
+        }
+        if(!at_least_one_disk_available){
+            break;
         }
     }
 
-    // TODO we might be able to free some mem here, need to thing about it tomorrow
+    // TODO we might be able to free some mem here, need to think about it tomorrow
 
     return 0;
 err:
@@ -151,3 +154,5 @@ int gfs_sync(void){
     }
     return 0;
 }
+
+// int gfs_
