@@ -7,6 +7,7 @@
 #include <inttypes.h>
 
 #define FILE_NAME_SIZE 5
+#define NUMBER_OF_FILES 30 // TODO this is super bad, but it will have to do for now
 
 #define BLOCKSIZE_DATA 512 // seems reasonable, might need to change this in the future, or might make it a customizable value
 #define BLOCKSIZE_INFO_DATA (BLOCKSIZE_DATA + sizeof(disk_offset_t))
@@ -18,7 +19,11 @@ enum{
     ERR_FOPEN,
     ERR_FREAD,
     ERR_FWRITE,
+
     ERR_UNREACHABLE,
+
+    ERR_NO_UNALLOCATED_FILE,
+    ERR_NO_UNALLOCATED_BLOCK,
 };
 
 enum{
@@ -35,7 +40,7 @@ struct storage{
     // circular buffer
     int free_blocks_start; // at which idx the next free block is located
     int free_blocks_end; // at which idx the last free block is located
-    int free_blocks_size; // needed for `end = (end+1) % size`
+    int free_blocks_size; // needed for `end = (end+1) % size`, and also for `start`
     struct block **free_blocks;
 
     int num_files;
@@ -69,7 +74,7 @@ struct block{
 struct file{
     char name[FILE_NAME_SIZE];
     int32_t first_block_disk_idx;
-    disk_offset_t first_block_offset;
+    disk_offset_t first_block_offset; // value is `BLOCK_NEXT_FREE` when file is unallocated
 };
 
 ////////////////////////// function
@@ -78,3 +83,4 @@ int gfs_init(int disks, char **locations);
 void gfs_deinit(void);
 int gfs_format(void);
 int gfs_sync(void);
+int gfs_sync_block(void);

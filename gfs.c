@@ -1,4 +1,6 @@
 
+#include <string.h>
+
 #include "helpers.h"
 
 #include "gfs.h"
@@ -174,6 +176,13 @@ int gfs_format(void){
 #ifdef GFS_DEBUG
     printf("formatting\n");
 #endif
+
+    storage.num_files = NUMBER_OF_FILES;
+    for(int fi=0; fi<storage.num_files; ++fi){
+        struct file *file = &(storage.files[fi]);
+        file->first_block_offset = BLOCK_NEXT_FREE; // signify that file is not allocated
+    }
+
     for(int di=0; di<storage.num_disks; ++di){
         struct disk *disk = &(storage.disks[di]);
         for(int bi=0; bi<disk->num_blocks; ++bi){
@@ -201,10 +210,11 @@ int gfs_sync(void){
 
     FILE *master_disk = storage.disks[0].location;
 
+    // write number of files
     if(fwrite(&storage.num_files, sizeof(storage.num_files), 1, master_disk) != 1){
         return ERR_FWRITE;
     }
-
+    // and write files meradata
     for(int fi=0; fi<storage.num_files; ++fi){
         struct file *file = &(storage.files[fi]);
         if(FWRITE(file->name, FILE_NAME_SIZE, master_disk) != FILE_NAME_SIZE){
@@ -217,6 +227,9 @@ int gfs_sync(void){
             return ERR_FWRITE;
         }
     }
+
+    // TODO this sucks (it only works currentsy since the number of files is hardcoded)
+    // some size should be skipped (size for metadata should be predetermined)
 
     for(int di=0; di<storage.num_disks; ++di){
         struct disk *disk = &(storage.disks[di]);
@@ -237,4 +250,36 @@ int gfs_sync(void){
     return 0;
 }
 
-// int gfs_create_file
+// int gfs_sync_block(struct block *block){
+//     struct disk *disk = storage.disks[block->info.disk_idx];
+// }
+
+int gfs_create_file(char file_name[FILE_NAME_SIZE]){
+    // find unallocated file
+    struct file *file = NULL;
+    for(int fi=0; fi<storage.num_files; ++fi){
+        struct file *candidate = &storage.files[fi];
+        if(candidate->first_block_offset == BLOCK_NEXT_FREE){
+            file = candidate;
+            break;
+        }
+    }
+    if(!file){
+        return ERR_NO_UNALLOCATED_FILE;
+    }
+    // find unallocated disk block
+    if(storage.free_blocks_start == storage.free_blocks_end){
+        return ERR_NO_UNALLOCATED_BLOCK;
+    }
+    struct block *block = storage.free_blocks[storage.free_blocks_start];
+    storage.free_blocks_start += 1;
+    storage.free_blocks_start = storage.free_blocks_start % storage.free_blocks_size;
+    // tell block it's allocated
+    block->info.next_block = BLOCK_NEXT_NONE;
+    // tell file it's allocated and set info
+    memcpy(file->name, file_name, sizeof(*file->name) * FILE_NAME_SIZE);
+    file->first_block_disk_idx = block->info.disk_idx;
+    file->first_block_offset = block->info.offset;
+    // TODO now call a proper `sync_file` and `sync_block` fncs
+    return 0;
+}
