@@ -24,3 +24,5 @@
 #define FWRITE(item_ptr, count, file) fwrite(item_ptr, sizeof(*(item_ptr)), count, file)
 
 #define FREAD(item_ptr, count, file) fread(item_ptr, sizeof(*(item_ptr)), count, file)
+
+void print_str(int len, char *str);

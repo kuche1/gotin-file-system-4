@@ -11,14 +11,30 @@ int main(void){
         return err;
     }
 
-    if((err = gfs_format())){
-        goto err;
+    // if((err = gfs_format())){
+    //     gfs_deinit();
+    //     return err;
+    // }
+
+    char file_name[FILE_NAME_SIZE] = {'g', 'a', 'y', 's', 'f'}; // used to be `gaysex`
+
+    if((err = gfs_create_file(file_name))){
+        printf("could not create file\n");
+    }else{
+        printf("created file\n");
+        gfs_sync();
     }
+
+    // if((err = gfs_delete_file(file_name))){
+    //     printf("could not delete file\n");
+    // }else{
+    //     printf("deleted file\n");
+    //     gfs_sync();
+    // }
 
     // printf("Press enter\n");
     // getchar();
 
-err:
     gfs_deinit();
 
     return 0;

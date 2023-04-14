@@ -1,6 +1,5 @@
 
 test
-test.o
-gfs.o
+*.o
 test_disk_1
 test_disk_2
