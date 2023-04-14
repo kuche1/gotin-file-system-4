@@ -18,3 +18,9 @@
 // TODO fseek that works with big values
 // and ftell that works with big values
 // then, the metadata needs to be updated
+
+// #define FWRITE_CHECK(item, file) (fwrite(item, sizeof(*item), 1, file) != 1)
+
+#define FWRITE(item_ptr, count, file) fwrite(item_ptr, sizeof(*(item_ptr)), count, file)
+
+#define FREAD(item_ptr, count, file) fread(item_ptr, sizeof(*(item_ptr)), count, file)

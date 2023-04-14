@@ -6,8 +6,10 @@
 #include <stdint.h>
 #include <inttypes.h>
 
+#define FILE_NAME_SIZE 5
+
 #define BLOCKSIZE_DATA 512 // seems reasonable, might need to change this in the future, or might make it a customizable value
-#define BLOCKSIZE_INFO_DATA (BLOCKSIZE_DATA + sizeof(block_offset_t))
+#define BLOCKSIZE_INFO_DATA (BLOCKSIZE_DATA + sizeof(disk_offset_t))
 
 ////////////////////////// enum
 
@@ -16,6 +18,7 @@ enum{
     ERR_FOPEN,
     ERR_FREAD,
     ERR_FWRITE,
+    ERR_UNREACHABLE,
 };
 
 enum{
@@ -32,7 +35,11 @@ struct storage{
     // circular buffer
     int free_blocks_start; // at which idx the next free block is located
     int free_blocks_end; // at which idx the last free block is located
+    int free_blocks_size; // needed for `end = (end+1) % size`
     struct block **free_blocks;
+
+    int num_files;
+    struct file *files;
 };
 
 struct disk{
@@ -41,12 +48,13 @@ struct disk{
     struct block *blocks;
 };
 
-typedef long int block_offset_t; // offset for `fseek` // what in the actual fuck this was supposed to be limited to 2GiB but in my tests it works perfectly fine with 8GiB
+typedef long int disk_offset_t; // offset for `fseek` // what in the actual fuck this was supposed to be limited to 2GiB but in my tests it works perfectly fine with 8GiB
+// TODO don't use regular `int` since this will be written to disk
 
 struct block_info{
-    FILE *location;
-    block_offset_t offset;
-    block_offset_t next_block; // update to this type would require update to `BLOCKSIZE_INC_INFO`
+    int disk_idx; // index of disk
+    disk_offset_t offset; // offset on disk
+    disk_offset_t next_block; // update to this type would require update to `BLOCKSIZE_INC_INFO`
 };
 
 struct block_data{
@@ -58,10 +66,11 @@ struct block{
     struct block_data *data; // TODO no need?
 };
 
-// struct file{
-//     char name[10];
-//     block_offset_t first_block;
-// }
+struct file{
+    char name[FILE_NAME_SIZE];
+    int32_t first_block_disk_idx;
+    disk_offset_t first_block_offset;
+};
 
 ////////////////////////// function
 
