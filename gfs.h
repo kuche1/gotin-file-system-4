@@ -117,7 +117,7 @@ int gfs_sync_file(struct file *file);
 int gfs_read_block(struct block *block, struct storage_location location);
 // find unallocated file, block
 int gfs_find_unallocated_block(struct block *block);
-int gfs_find_unallocated_file(struct file **file);
+int gfs_find_unallocated_file(struct file **file); // pointer to pointer is sufficient since all files are loaded int omemory (as of right now)
 // find file by properties
 struct file *gfs_find_file(char file_name[FILE_NAME_SIZE]); // TODO not ptr
 // file creation, deletion
