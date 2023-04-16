@@ -9,8 +9,9 @@
 #define FILE_NAME_SIZE 5
 #define NUMBER_OF_FILES 30 // TODO this is super bad, but it will have to do for now
 
+#define BLOCKSIZE_INFO (sizeof(struct storage_location))
 #define BLOCKSIZE_DATA 512 // seems reasonable, might need to change this in the future, or might make it a customizable value
-#define BLOCKSIZE_INFO_DATA (BLOCKSIZE_DATA + sizeof(struct block_location))
+#define BLOCKSIZE_INFO_DATA (BLOCKSIZE_INFO + BLOCKSIZE_DATA)
 
 ////////////////////////// enum
 
@@ -35,12 +36,13 @@ enum{
     BLOCK_NEXT_FREE = -2, // means that this block is not even allocated for anything // TODO rename
 };
 
-////////////////////////// struct
+////////////////////////// general stuff
 
 struct storage{
     int num_disks;
     struct disk *disks;
 
+    // TODO location for first file
     int num_files;
     struct file *files;
 
@@ -65,14 +67,14 @@ typedef long int disk_offset_t; // offset for `fseek`
 // what in the actual fuck this was supposed to be limited to 2GiB but in my tests it works perfectly fine with 8GiB
 // TODO don't use regular `int` since this will be written to disk
 
-struct block_location{
+struct storage_location{
     int8_t disk_idx; // which index is the disk // up to `2**8 == 256` disks
     disk_offset_t offset; // at which offset on the disk is this block located
 };
 
 struct block_info{
-    struct block_location location;
-    struct block_location next;
+    struct storage_location location;
+    struct storage_location next;
 };
 
 struct block{
@@ -85,7 +87,7 @@ struct file{
     char name[FILE_NAME_SIZE];
     // int32_t first_block_disk_idx;
     // disk_offset_t first_block_offset; // value is `BLOCK_NEXT_FREE` when file is unallocated
-    struct block_location first_block;
+    struct storage_location first_block;
 };
 
 ////////////////////////// function
@@ -100,7 +102,7 @@ int gfs_sync(void);
 int gfs_sync_block(struct block *block);
 int gfs_sync_file(struct file *file);
 // find file, block
-struct block *gfs_find_block(struct block_location *location);
+struct block *gfs_find_block(struct storage_location *location);
 struct file *gfs_find_file(char file_name[FILE_NAME_SIZE]);
 // file creation
 int gfs_create_file(char file_name[FILE_NAME_SIZE]);

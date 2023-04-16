@@ -277,7 +277,7 @@ int gfs_sync_file(struct file *file){
     return 0;
 }
 
-// struct block *gfs_find_block(struct block_location *location){
+// struct block *gfs_find_block(struct storage_location *location){
 //     storage.disks[location.block_idx]
 // }
 
