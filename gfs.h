@@ -38,13 +38,22 @@ enum{
 
 ////////////////////////// general stuff
 
+typedef long int disk_offset_t; // offset for `fseek`
+// what in the actual fuck this was supposed to be limited to 2GiB but in my tests it works perfectly fine with 8GiB
+// TODO don't use regular `int` since this will be written to disk
+
+struct storage_location{
+    int8_t disk_idx; // which index is the disk // up to `2**8 == 256` disks
+    disk_offset_t offset; // at which offset on the disk is this block located
+};
+
 struct storage{
     int num_disks;
     struct disk *disks;
 
-    // TODO location for first file
     int num_files;
     struct file *files;
+    struct storage_location file_section; // does not inclide `num_files`
 
     // circular buffer
     int free_blocks_start; // at which idx the next free block is located
@@ -59,18 +68,10 @@ struct disk{
     FILE *location;
     int num_blocks;
     struct block *blocks;
+    struct storage_location block_section;
 };
 
 ////////////////////////// block
-
-typedef long int disk_offset_t; // offset for `fseek`
-// what in the actual fuck this was supposed to be limited to 2GiB but in my tests it works perfectly fine with 8GiB
-// TODO don't use regular `int` since this will be written to disk
-
-struct storage_location{
-    int8_t disk_idx; // which index is the disk // up to `2**8 == 256` disks
-    disk_offset_t offset; // at which offset on the disk is this block located
-};
 
 struct block_info{
     struct storage_location location;

@@ -60,6 +60,9 @@ int gfs_init(int disks, char **locations){
         err = ERR_MALLOC;
         goto err;
     }
+    // save location
+    storage.file_section.disk_idx = 0;
+    storage.file_section.offset = ftell(master_disk);
     // read data for each file
     for(int fi=0; fi<storage.num_files; fi++){
         struct file *file = &(storage.files[fi]);
@@ -101,6 +104,10 @@ int gfs_init(int disks, char **locations){
             err = ERR_MALLOC;
             goto err;
         }
+
+        // save location
+        disk->block_section.disk_idx = di;
+        disk->block_section.offset = ftell(disk->location);
 
         // disk_offset_t block_offset = 0; // TODO we could use this kind of mechanism for the `ftell` limit
         for(int bi=0; bi<blocks; bi++){
