@@ -24,6 +24,13 @@ int main(void){
         printf("created file\n");
     }
 
+    file_name[0] = 'a';
+    if((err = gfs_create_file(file_name))){
+        printf("could not create file\n");
+    }else{
+        printf("created file\n");
+    }
+
     // if((err = gfs_delete_file(file_name))){
     //     printf("could not delete file\n");
     // }else{

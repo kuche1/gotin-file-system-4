@@ -19,7 +19,8 @@ int gfs_init(int disks, char **locations){
     }
 
     storage.num_disks = 0;
-    storage.free_blocks = NULL;
+    storage.last_allocated_disk = disks - 1; // start at first disk
+    storage.disks = NULL;
     storage.num_files = 0;
     storage.files = NULL;
 
@@ -34,7 +35,6 @@ int gfs_init(int disks, char **locations){
         
         disk->location = NULL;
         disk->num_blocks = 0;
-        disk->blocks = NULL;
 
         char *path_to_disk = locations[di];
         FILE *f = fopen(path_to_disk, "r+"); // if file does not exist, it will return `NULL` instead of creating it
@@ -92,7 +92,11 @@ int gfs_init(int disks, char **locations){
     // set block indexes
     for(int di=0; di<storage.num_disks; ++di){
         struct disk *disk = &(storage.disks[di]);
-        
+
+        // save location
+        disk->block_section = ftell(disk->location);
+
+        // calc disk space
         disk_offset_t disk_current = ftell(disk->location);
         fseek(disk->location, 0, SEEK_END);
         disk_offset_t disk_size = ftell(disk->location); // TODO bad solution, limited to 2GiB; tested with 3GiB, the return value is as if 2GiB; ? can return negative value ?
@@ -105,73 +109,36 @@ int gfs_init(int disks, char **locations){
 
         int blocks = remaining_space / BLOCKSIZE_INFO_DATA;
 
-        if(!MALLOC_AND_SET(disk->blocks, blocks)){
+        // init free blocks
+        disk->free_blocks.start = 0;
+        disk->free_blocks.end = 0;
+        disk->free_blocks.size = blocks;
+
+        if(!MALLOC_AND_SET(disk->free_blocks.offsets, blocks)){ // assume all blocks could potentially be free
             err = ERR_MALLOC;
             goto err;
         }
 
-        // save location
-        disk->block_section.disk_idx = di;
-        disk->block_section.offset = ftell(disk->location);
-
-        // disk_offset_t block_offset = 0; // TODO we could use this kind of mechanism for the `ftell` limit
         for(int bi=0; bi<blocks; bi++){
-            struct block *block = &(disk->blocks[bi]);
-            struct block_info *block_info = &(block->info);
-            block_info->location.disk_idx = di;
-            block_info->location.offset = ftell(disk->location); // TODO again, 2GiB limit
-            // block_info->offset = block_offset;
-            // block_offset += BLOCKSIZE_INC_INFO;
 
-            FILE *file = storage.disks[block_info->location.disk_idx].location;
+            struct block_info block_info;
+            // block_info.location.disk_idx = di; // not needed
+            block_info.location.offset = ftell(disk->location);
 
-            if(FREAD(&block_info->next, 1, file) != 1){
+            if(FREAD(&block_info.next, 1, disk->location) != 1){
                 err = ERR_FREAD;
                 goto err;
             }
-            fseek(file, BLOCKSIZE_DATA, SEEK_CUR);
+            fseek(disk->location, BLOCKSIZE_DATA, SEEK_CUR);
+
+            if(block_info.next.offset == BLOCK_NEXT_FREE){
+                disk->free_blocks.offsets[disk->free_blocks.end] = block_info.location.offset;
+                disk->free_blocks.end += 1;
+            }
 
             disk->num_blocks += 1;
         }
     }
-
-    // allocate enough memory for free blocks arr; assume that 100% of blocks could be free
-    int total_blocks = 0;
-    for(int di=0; di<storage.num_disks; ++di){
-        total_blocks += storage.disks[di].num_blocks;
-    }
-
-    // allocate free block arr
-    if(!MALLOC_AND_SET(storage.free_blocks, total_blocks)){
-        err = ERR_MALLOC;
-        goto err;
-    }
-    storage.free_blocks_size = total_blocks;
-
-    // get number of free blocks and assign in order of disk1->disk2->disk3->...->disk1
-    storage.free_blocks_start = 0;
-    storage.free_blocks_end = 0;
-    for(int bi=0;; ++bi){
-        int at_least_one_disk_available = 0;
-        for(int di=0; di<storage.num_disks; ++di){
-            struct disk *disk = &(storage.disks[di]);
-            if(bi >= disk->num_blocks){
-                break;
-            }
-            at_least_one_disk_available = 1;
-            struct block *block = &(disk->blocks[bi]);
-            struct block_info *block_info = &(block->info);
-            if(block_info->next.offset == BLOCK_NEXT_FREE){
-                storage.free_blocks[storage.free_blocks_end] = block;
-                storage.free_blocks_end += 1;
-            }
-        }
-        if(!at_least_one_disk_available){
-            break;
-        }
-    }
-
-    // TODO we might be able to free some mem here, need to think about it tomorrow
 
 #if GFS_DEBUG
     printf("gfs: init end\n");
@@ -186,14 +153,14 @@ err:
 void gfs_deinit(void){
     for(int i=0; i<storage.num_disks; ++i){
         struct disk *disk = &(storage.disks[i]);
-        FCLOSE(disk->location); // fclose(disk->location);
-        DEMALLOC(disk->blocks);
+        FCLOSE(disk->location);
+        DEMALLOC(disk->free_blocks.offsets);
     }
     DEMALLOC(storage.files);
     DEMALLOC(storage.disks);
-    DEMALLOC(storage.free_blocks);
 }
 
+// TODO free blocks need to be refreshed after calling this
 int gfs_format(void){
 #ifdef GFS_DEBUG
     printf("gfs: format start\n");
@@ -213,10 +180,15 @@ int gfs_format(void){
     for(int di=0; di<storage.num_disks; ++di){
         struct disk *disk = &(storage.disks[di]);
         for(int bi=0; bi<disk->num_blocks; ++bi){
-            struct block *block = &(disk->blocks[bi]);
-            struct block_info *block_info = &(block->info);
-            block_info->next.offset = BLOCK_NEXT_FREE; // signify that the block is not allocated
-            if((err = gfs_sync_block(block))){
+            struct block block;
+
+            block.info.location.disk_idx = di;
+            block.info.location.offset = disk->block_section + (bi * BLOCKSIZE_INFO_DATA);
+
+            // block.info.next.disk_idx = undefined;
+            block.info.next.offset = BLOCK_NEXT_FREE;
+
+            if((err = gfs_sync_block(&block))){
                 return err;
             }
         }
@@ -224,56 +196,6 @@ int gfs_format(void){
 
 #ifdef GFS_DEBUG
     printf("gfs: format end \n");
-#endif
-    return 0;
-}
-
-int gfs_sync(void){
-#ifdef GFS_DEBUG
-    printf("gfs: sync start\n");
-#endif
-
-    if(storage.num_disks == 0){
-        return 0;
-    }
-
-    for(int di=0; di<storage.num_disks; ++di){
-        struct disk *disk = &(storage.disks[di]);
-        rewind(disk->location);
-    }
-
-    FILE *master_disk = storage.disks[0].location;
-
-    // write number of files
-    if(fwrite(&storage.num_files, sizeof(storage.num_files), 1, master_disk) != 1){
-        return ERR_FWRITE;
-    }
-    // and write files metadata
-    for(int fi=0; fi<storage.num_files; ++fi){
-        struct file *file = &(storage.files[fi]);
-        int err;
-        if((err = gfs_sync_file(file))){
-            return err;
-        }
-    }
-
-    // TODO this sucks (it only works currentsy since the number of files is hardcoded)
-    // some size should be skipped (size for metadata should be predetermined)
-
-    for(int di=0; di<storage.num_disks; ++di){
-        struct disk *disk = &(storage.disks[di]);
-
-        for(int bi=0; bi<disk->num_blocks; ++bi){
-            struct block *block = &(disk->blocks[bi]);
-            int err;
-            if((err = gfs_sync_block(block))){
-                return err;
-            }
-        }
-    }
-
-#ifdef GFS_DEBUG
-    printf("gfs: sync end\n");
 #endif
     return 0;
 }
@@ -308,6 +230,75 @@ int gfs_sync_file(struct file *file){
     return 0;
 }
 
+int gfs_read_block(struct block *block, struct storage_location location){
+    FILE *f = storage.disks[location.disk_idx].location;
+    fseek(f, location.offset, SEEK_SET);
+
+    if(FREAD(&block->info.next, 1, f) != 1){
+        return ERR_FREAD;
+    }
+    if(FREAD(block->data, BLOCKSIZE_DATA, f) != BLOCKSIZE_DATA){
+        return ERR_FREAD;
+    }
+
+    block->info.location = location;
+
+    return 0;
+}
+
+// returned block needs to be changed from `UNALLOCATED` and synced by caller
+int gfs_find_unallocated_block(struct block *block){
+    int err;
+
+    int disk_idx_last = storage.last_allocated_disk;
+    int disk_idx = (disk_idx_last + 1) % storage.num_disks;
+
+    while(1){
+        struct disk *disk = &storage.disks[disk_idx];
+
+        if(disk->free_blocks.start != disk->free_blocks.end){ // there is a free block
+            break;
+        }
+
+        if(disk_idx == disk_idx_last){
+            printf("============= no unallocated blocks\n");
+            return ERR_NO_UNALLOCATED_BLOCK;
+        }
+
+        disk_idx = (disk_idx+1) % storage.num_disks;
+    }
+
+    storage.last_allocated_disk = disk_idx;
+    struct disk *disk = &storage.disks[disk_idx];
+
+    int block_idx = disk->free_blocks.start;
+    disk->free_blocks.start = (disk->free_blocks.start + 1) % disk->free_blocks.size;
+    disk_offset_t block_offset = disk->free_blocks.offsets[block_idx];
+
+    struct storage_location location = {
+        .disk_idx = disk_idx,
+        .offset = block_offset,
+    };
+    if((err = gfs_read_block(block, location))){
+        return err;
+    }
+
+    block->info.next.offset = BLOCK_NEXT_NONE; // should not be needed (as the caller should overwrite this), doing it just in case
+
+    return 0;
+}
+
+int gfs_find_unallocated_file(struct file **file){
+    for(int fi=0; fi<storage.num_files; ++fi){
+        struct file *candidate = &storage.files[fi];
+        if(candidate->first_block.offset == BLOCK_NEXT_FREE){
+            *file = candidate;
+            return 0;
+        }
+    }
+    return ERR_NO_UNALLOCATED_FILE;
+}
+
 // struct block *gfs_find_block(struct storage_location *location){
 //     storage.disks[location.block_idx]
 // }
@@ -325,50 +316,49 @@ struct file *gfs_find_file(char file_name[FILE_NAME_SIZE]){
 }
 
 int gfs_create_file(char file_name[FILE_NAME_SIZE]){
+    int err;
+
     if(gfs_find_file(file_name)){
 #ifdef GFS_DEBUG
         printf("gfs: err: could not create file since file with same name already exists\n");
 #endif
         return ERR_FILE_WITH_SAME_NAME_ALREADY_EXISTS;
     }
+    
     // find unallocated file
-    struct file *file = NULL;
-    for(int fi=0; fi<storage.num_files; ++fi){
-        struct file *candidate = &storage.files[fi];
-        if(candidate->first_block.offset == BLOCK_NEXT_FREE){
-            file = candidate;
-            break;
-        }
-    }
-    if(!file){
+    struct file *file;
+    if((err = gfs_find_unallocated_file(&file))){
 #ifdef GFS_DEBUG
-        printf("gfs: err: can't find any unallocated files\n");
+        printf("gfs: err: problem with finding unallocated file\n");
 #endif
-        return ERR_NO_UNALLOCATED_FILE;
+        return err;
     }
-    // find unallocated disk block // TODO we could just skip this part and assign BLOCK_NEXT_NONE
-    if(storage.free_blocks_start == storage.free_blocks_end){
+
+    // TODO we could just skip this part and assign BLOCK_NEXT_NONE
+    //     but let's do it for test coverage's case
+
+    // find unallocated disk block
+    struct block block;
+    if((err = gfs_find_unallocated_block(&block))){
 #ifdef GFS_DEBUG
-        printf("gfs: err: can't find any unallocated blocks\n");
+        printf("gfs: err: problem with finding unallocated block\n");
+        return err;
 #endif
-        return ERR_NO_UNALLOCATED_BLOCK;
     }
-    struct block *block = storage.free_blocks[storage.free_blocks_start];
-    storage.free_blocks_start += 1;
-    storage.free_blocks_start = storage.free_blocks_start % storage.free_blocks_size;
-    // tell block it's allocated
-    block->info.next.offset = BLOCK_NEXT_NONE;
+    // tell the block that it's now allocated
+    block.info.next.offset = BLOCK_NEXT_NONE;
     // tell file it's allocated and set info
     memcpy(file->name, file_name, sizeof(*file->name) * FILE_NAME_SIZE);
-    file->first_block = block->info.location;
+    file->first_block = block.info.location;
+
     // sync
-    int err;
-    if((err = gfs_sync_block(block))){ // TODO should we sync the block first or the file? think about this
+    if((err = gfs_sync_block(&block))){ // TODO should we sync the block first or the file? think about this
         return err;
     }
     if((err = gfs_sync_file(file))){
         return err;
     }
+
     return 0;
 }
 

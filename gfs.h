@@ -1,6 +1,9 @@
 
 // TODO
+//
 // use `int32_t` instead of `int` for structs that are written-read from disk
+//
+// check return code of `fseek`
 
 #include <stdio.h>
 #include <stdint.h>
@@ -49,35 +52,37 @@ struct storage_location{
 
 struct storage{
     int num_disks;
+    int last_allocated_disk; // which disk did we last allocate from
     struct disk *disks;
 
     int num_files;
     struct file *files;
     struct storage_location file_section; // wil be needed for writing num_files later on
 
-    // circular buffer
-    int free_blocks_start; // at which idx the next free block is located
-    int free_blocks_end; // at which idx the last free block is located
-    int free_blocks_size; // needed for `end = (end+1) % size`, and also for `start`
-    struct block **free_blocks;
-    // TODO set `free_blocks` on per disk basis
+    // // circular buffer
+    // int free_blocks_start; // at which idx the next free block is located
+    // int free_blocks_end; // at which idx the last free block is located
+    // int free_blocks_size; // needed for `end = (end+1) % size`, and also for `start`
+    // struct block **free_blocks;
+    // // TODO set `free_blocks` on per disk basis
 };
 
 ////////////////////////// disk
 
 // TODO unused as of right now
-struct free_blocks{
+struct free_blocks_on_disk{
     int start; // at which index is the next free block located
     int end; // at which index is the last free block located
     int size; // needed for `start = (start+1) % size` and `end`
-    struct block **blocks;
+    disk_offset_t *offsets; // no need to use `storage_location` since the disk is already known
 };
 
 struct disk{
     FILE *location;
-    int num_blocks;
-    struct block *blocks;
-    struct storage_location block_section;
+    disk_offset_t block_section;
+    
+    int num_blocks; // TODO not needed? (used for `format` as of right now)
+    struct free_blocks_on_disk free_blocks;
 };
 
 ////////////////////////// block
@@ -94,6 +99,8 @@ struct block{
 
 ////////////////////////// file
 
+// TODO intead of using a section for files,
+//     we could allocate a new file that contains all data for all files
 struct file{
     char name[FILE_NAME_SIZE];
     struct storage_location location; // location of file metadata
@@ -111,8 +118,14 @@ int gfs_sync(void);
 // specialised syncing
 int gfs_sync_block(struct block *block);
 int gfs_sync_file(struct file *file);
-// find file, block
-struct block *gfs_find_block(struct storage_location *location);
-struct file *gfs_find_file(char file_name[FILE_NAME_SIZE]);
+// read block
+int gfs_read_block(struct block *block, struct storage_location location);
+// find unallocated file, block
+int gfs_find_unallocated_block(struct block *block);
+int gfs_find_unallocated_file(struct file **file);
+//struct file gfs_find_unallocated_file(void);
+// find file, block by properties
+//struct block *gfs_find_block(struct storage_location location); // TODO not ptr
+struct file *gfs_find_file(char file_name[FILE_NAME_SIZE]); // TODO not ptr
 // file creation
 int gfs_create_file(char file_name[FILE_NAME_SIZE]);
