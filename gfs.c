@@ -98,9 +98,15 @@ int gfs_init(int disks, char **locations){
 
         // calc disk space
         disk_offset_t disk_current = ftell(disk->location);
-        fseek(disk->location, 0, SEEK_END);
+        if(fseek(disk->location, 0, SEEK_END)){
+            err = ERR_FSEEK;
+            goto err;
+        }
         disk_offset_t disk_size = ftell(disk->location); // TODO bad solution, limited to 2GiB; tested with 3GiB, the return value is as if 2GiB; ? can return negative value ?
-        fseek(disk->location, disk_current, SEEK_SET);
+        if(fseek(disk->location, disk_current, SEEK_SET)){
+            err = ERR_FSEEK;
+            goto err;
+        }
 #ifdef GFS_DEBUG
         printf("gfs: size of device %d: %li\n", di, disk_size);
 #endif
@@ -129,7 +135,10 @@ int gfs_init(int disks, char **locations){
                 err = ERR_FREAD;
                 goto err;
             }
-            fseek(disk->location, BLOCKSIZE_DATA, SEEK_CUR);
+            if(fseek(disk->location, BLOCKSIZE_DATA, SEEK_CUR)){
+                err = ERR_FSEEK;
+                goto err;
+            }
 
             if(block_info.next.offset == BLOCK_NEXT_FREE){
                 disk->free_blocks.offsets[disk->free_blocks.end] = block_info.location.offset;
@@ -195,7 +204,7 @@ int gfs_format(void){
     }
 
 #ifdef GFS_DEBUG
-    printf("gfs: format end \n");
+    printf("gfs: format end\n");
 #endif
     return 0;
 }
@@ -203,7 +212,9 @@ int gfs_format(void){
 // TODO split into `sync_info` and `sync_data`
 int gfs_sync_block(struct block *block){
     FILE *f = storage.disks[block->info.location.disk_idx].location;
-    fseek(f, block->info.location.offset, SEEK_SET);
+    if(fseek(f, block->info.location.offset, SEEK_SET)){
+        return ERR_FSEEK;
+    }
     
     if(FWRITE(&block->info.next, 1, f) != 1){
         return ERR_FWRITE;
@@ -218,7 +229,9 @@ int gfs_sync_block(struct block *block){
 // TODO split into `sync_info` and `sync_data`
 int gfs_sync_file(struct file *file){
     FILE *f = storage.disks[file->location.disk_idx].location;
-    fseek(f, file->location.offset, SEEK_SET);
+    if(fseek(f, file->location.offset, SEEK_SET)){
+        return ERR_FSEEK;
+    }
 
     if(FWRITE(file->name, FILE_NAME_SIZE, f) != FILE_NAME_SIZE){
         return ERR_FWRITE;
@@ -232,7 +245,9 @@ int gfs_sync_file(struct file *file){
 
 int gfs_read_block(struct block *block, struct storage_location location){
     FILE *f = storage.disks[location.disk_idx].location;
-    fseek(f, location.offset, SEEK_SET);
+    if(fseek(f, location.offset, SEEK_SET)){
+        return ERR_FSEEK;
+    }
 
     if(FREAD(&block->info.next, 1, f) != 1){
         return ERR_FREAD;
@@ -261,7 +276,6 @@ int gfs_find_unallocated_block(struct block *block){
         }
 
         if(disk_idx == disk_idx_last){
-            printf("============= no unallocated blocks\n");
             return ERR_NO_UNALLOCATED_BLOCK;
         }
 

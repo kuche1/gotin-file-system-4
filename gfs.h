@@ -22,6 +22,7 @@ enum{
     // generic
     ERR_MALLOC = 1,
     ERR_FOPEN,
+    ERR_FSEEK,
     ERR_FREAD,
     ERR_FWRITE,
     // generic, unusual
