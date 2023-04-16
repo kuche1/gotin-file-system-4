@@ -102,7 +102,7 @@ int gfs_init(int disks, char **locations){
             err = ERR_FSEEK;
             goto err;
         }
-        disk_offset_t disk_size = ftell(disk->location); // TODO bad solution, limited to 2GiB; tested with 3GiB, the return value is as if 2GiB; ? can return negative value ?
+        disk_offset_t disk_size = ftell(disk->location);
         if(fseek(disk->location, disk_current, SEEK_SET)){
             err = ERR_FSEEK;
             goto err;
