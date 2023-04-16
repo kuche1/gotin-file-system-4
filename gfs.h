@@ -41,15 +41,17 @@ struct storage{
     int num_disks;
     struct disk *disks;
 
+    int num_files;
+    struct file *files;
+
     // circular buffer
     int free_blocks_start; // at which idx the next free block is located
     int free_blocks_end; // at which idx the last free block is located
     int free_blocks_size; // needed for `end = (end+1) % size`, and also for `start`
     struct block **free_blocks;
-
-    int num_files;
-    struct file *files;
 };
+
+////////////////////////// disk
 
 struct disk{
     FILE *location;
@@ -57,7 +59,10 @@ struct disk{
     struct block *blocks;
 };
 
-typedef long int disk_offset_t; // offset for `fseek` // what in the actual fuck this was supposed to be limited to 2GiB but in my tests it works perfectly fine with 8GiB
+////////////////////////// block
+
+typedef long int disk_offset_t; // offset for `fseek`
+// what in the actual fuck this was supposed to be limited to 2GiB but in my tests it works perfectly fine with 8GiB
 // TODO don't use regular `int` since this will be written to disk
 
 struct block_location{
@@ -70,15 +75,11 @@ struct block_info{
     struct block_location next;
 };
 
-// TODO delete?
-struct block_data{
-    char data[BLOCKSIZE_DATA];
-};
-
 struct block{
     struct block_info info;
-    struct block_data *data; // TODO no need?
 };
+
+////////////////////////// file
 
 struct file{
     char name[FILE_NAME_SIZE];
@@ -98,7 +99,8 @@ int gfs_sync(void);
 // specialised syncing
 int gfs_sync_block(struct block *block);
 int gfs_sync_file(struct file *file);
-// utilty for files
-struct file *gfs_find_file_by_name(char file_name[FILE_NAME_SIZE]); // TODO rename to `find_file`
+// find file, block
+struct block *gfs_find_block(struct block_location *location);
+struct file *gfs_find_file(char file_name[FILE_NAME_SIZE]);
 // file creation
 int gfs_create_file(char file_name[FILE_NAME_SIZE]);

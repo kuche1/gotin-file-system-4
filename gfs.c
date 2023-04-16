@@ -90,7 +90,7 @@ int gfs_init(int disks, char **locations){
         disk_offset_t disk_size = ftell(disk->location); // TODO bad solution, limited to 2GiB; tested with 3GiB, the return value is as if 2GiB; ? can return negative value ?
         fseek(disk->location, disk_current, SEEK_SET);
 #ifdef GFS_DEBUG
-        printf("size of device %d: %li\n", di, disk_size);
+        printf("gfs: size of device %d: %li\n", di, disk_size);
 #endif
 
         disk_offset_t remaining_space = disk_size - disk_current;
@@ -277,7 +277,11 @@ int gfs_sync_file(struct file *file){
     return 0;
 }
 
-struct file *gfs_find_file_by_name(char file_name[FILE_NAME_SIZE]){
+// struct block *gfs_find_block(struct block_location *location){
+//     storage.disks[location.block_idx]
+// }
+
+struct file *gfs_find_file(char file_name[FILE_NAME_SIZE]){
     for(int fi=0; fi<storage.num_files; ++fi){
         struct file *file = &storage.files[fi];
         if(file->first_block.offset >= 0){
@@ -290,7 +294,7 @@ struct file *gfs_find_file_by_name(char file_name[FILE_NAME_SIZE]){
 }
 
 int gfs_create_file(char file_name[FILE_NAME_SIZE]){
-    if(gfs_find_file_by_name(file_name)){
+    if(gfs_find_file(file_name)){
 #ifdef GFS_DEBUG
         printf("gfs: err: could not create file since file with same name already exists\n");
 #endif
@@ -337,17 +341,20 @@ int gfs_create_file(char file_name[FILE_NAME_SIZE]){
     return 0;
 }
 
-// int gfs_delete_file(char file_name[FILE_NAME_SIZE]){
-//     struct file *file = gfs_find_file_by_name(file_name);
+// int gfs_delete_file(char file_name[FILE_NAME_SIZE]){ // TODO think about the syncing here
+//     struct file *file = gfs_find_file(file_name);
 //     if(!file){
 //         return ERR_FILE_DOESNT_EXIST;
 //     }
-//     struct block *block = gfs_find_block(file->first_block_disk_idx, file->first_block_offset);
-//     file->first_block_offset = BLOCK_NEXT_FREE; // deallocate file
+
+//     struct block *block = gfs_find_block(file->first_block);
+//     file->first_block.offset = BLOCK_NEXT_FREE; // deallocate file
+//     gfs_sync_file(file); // TODO check for error
     
 //     while(block){
-//         struct block *next = gfs_find_block(block->info.first_block_disk_idx, file->first_block_offset);
+//         struct block *next = gfs_find_block(block->info.next);
+//         block->info.location.offset = BLOCK_NEXT_FREE;
+//         gfs_sync_block(block); // TODO check for error
+//         block = next;
 //     }
-
-//     // TODO sync
 // }
