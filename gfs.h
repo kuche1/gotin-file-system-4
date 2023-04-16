@@ -60,9 +60,18 @@ struct storage{
     int free_blocks_end; // at which idx the last free block is located
     int free_blocks_size; // needed for `end = (end+1) % size`, and also for `start`
     struct block **free_blocks;
+    // TODO set `free_blocks` on per disk basis
 };
 
 ////////////////////////// disk
+
+// TODO unused as of right now
+struct free_blocks{
+    int start; // at which index is the next free block located
+    int end; // at which index is the last free block located
+    int size; // needed for `start = (start+1) % size` and `end`
+    struct block **blocks;
+};
 
 struct disk{
     FILE *location;
