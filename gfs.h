@@ -3,7 +3,7 @@
 //
 // use `int32_t` instead of `int` for structs that are written-read from disk
 //
-// check return code of `fseek`
+// create a function that reads the whole disk and checks for nonsensical data
 
 #include <stdio.h>
 #include <stdint.h>
@@ -35,6 +35,7 @@ enum{
     ERR_FILE_DOESNT_EXIST,
 };
 
+// TODO put this into a separate enum and don't merge with the offset
 enum{
     BLOCK_NEXT_NONE = -1, // means that this is the last block
     BLOCK_NEXT_FREE = -2, // means that this block is not even allocated for anything // TODO rename
@@ -59,19 +60,12 @@ struct storage{
     int num_files;
     struct file *files;
     struct storage_location file_section; // wil be needed for writing num_files later on
-
-    // // circular buffer
-    // int free_blocks_start; // at which idx the next free block is located
-    // int free_blocks_end; // at which idx the last free block is located
-    // int free_blocks_size; // needed for `end = (end+1) % size`, and also for `start`
-    // struct block **free_blocks;
-    // // TODO set `free_blocks` on per disk basis
 };
 
 ////////////////////////// disk
 
-// TODO unused as of right now
 struct free_blocks_on_disk{
+    // circular buffer
     int start; // at which index is the next free block located
     int end; // at which index is the last free block located
     int size; // needed for `start = (start+1) % size` and `end`
@@ -124,9 +118,8 @@ int gfs_read_block(struct block *block, struct storage_location location);
 // find unallocated file, block
 int gfs_find_unallocated_block(struct block *block);
 int gfs_find_unallocated_file(struct file **file);
-//struct file gfs_find_unallocated_file(void);
-// find file, block by properties
-//struct block *gfs_find_block(struct storage_location location); // TODO not ptr
+// find file by properties
 struct file *gfs_find_file(char file_name[FILE_NAME_SIZE]); // TODO not ptr
-// file creation
+// file creation, deletion
 int gfs_create_file(char file_name[FILE_NAME_SIZE]);
+int gfs_delete_file(char file_name[FILE_NAME_SIZE]);

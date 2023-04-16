@@ -19,7 +19,7 @@ int gfs_init(int disks, char **locations){
     }
 
     storage.num_disks = 0;
-    storage.last_allocated_disk = disks - 1; // start at first disk
+    storage.last_allocated_disk = disks - 1; // start at first disk (this will be increased by 1 then `%`ed)
     storage.disks = NULL;
     storage.num_files = 0;
     storage.files = NULL;
@@ -313,10 +313,6 @@ int gfs_find_unallocated_file(struct file **file){
     return ERR_NO_UNALLOCATED_FILE;
 }
 
-// struct block *gfs_find_block(struct storage_location *location){
-//     storage.disks[location.block_idx]
-// }
-
 struct file *gfs_find_file(char file_name[FILE_NAME_SIZE]){
     for(int fi=0; fi<storage.num_files; ++fi){
         struct file *file = &storage.files[fi];
@@ -334,7 +330,9 @@ int gfs_create_file(char file_name[FILE_NAME_SIZE]){
 
     if(gfs_find_file(file_name)){
 #ifdef GFS_DEBUG
-        printf("gfs: err: could not create file since file with same name already exists\n");
+        printf("gfs: err: could not create file since file with same name already exists `");
+        print_str(FILE_NAME_SIZE, file_name);
+        printf("`\n");
 #endif
         return ERR_FILE_WITH_SAME_NAME_ALREADY_EXISTS;
     }
@@ -376,20 +374,55 @@ int gfs_create_file(char file_name[FILE_NAME_SIZE]){
     return 0;
 }
 
-// int gfs_delete_file(char file_name[FILE_NAME_SIZE]){ // TODO think about the syncing here
-//     struct file *file = gfs_find_file(file_name);
-//     if(!file){
-//         return ERR_FILE_DOESNT_EXIST;
-//     }
+// TODO think about the syncing here
+int gfs_delete_file(char file_name[FILE_NAME_SIZE]){
+    int err;
 
-//     struct block *block = gfs_find_block(file->first_block);
-//     file->first_block.offset = BLOCK_NEXT_FREE; // deallocate file
-//     gfs_sync_file(file); // TODO check for error
-    
-//     while(block){
-//         struct block *next = gfs_find_block(block->info.next);
-//         block->info.location.offset = BLOCK_NEXT_FREE;
-//         gfs_sync_block(block); // TODO check for error
-//         block = next;
-//     }
-// }
+    struct file *file = gfs_find_file(file_name);
+    if(!file){
+#ifdef GFS_DEBUG
+        printf("gfs: err: cannot delete file as it doesn't exist `");
+        print_str(FILE_NAME_SIZE, file_name);
+        printf("`\n");
+#endif
+        return ERR_FILE_DOESNT_EXIST;
+    }
+
+    struct storage_location first_block = file->first_block;
+
+    file->first_block.offset = BLOCK_NEXT_FREE; // mark file as deallocated
+    if((err = gfs_sync_file(file))){ // sync
+        return err;
+    }
+
+    if(first_block.offset == BLOCK_NEXT_NONE){ // file doesn't consist of any blocks
+        return 0;
+    }
+
+    struct block block;
+    if((err = gfs_read_block(&block, file->first_block))){ // TODO gfs_read_block_info
+        return err;
+    }
+
+    while(1){
+        struct storage_location next = block.info.next;
+
+        // deallocate
+        block.info.next.offset = BLOCK_NEXT_FREE;
+        // sync
+        if((err = gfs_sync_block(&block))){
+            return err;
+        }
+
+        if(next.offset == BLOCK_NEXT_NONE){ // no next block
+            break;
+        }
+
+        // read next and write to `block`
+        if((err = gfs_read_block(&block, next))){
+            return err;
+        }
+    }
+
+    return 0;
+}

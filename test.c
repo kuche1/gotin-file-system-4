@@ -18,24 +18,27 @@ int main(void){
 
     char file_name[FILE_NAME_SIZE] = {'g', 'a', 'y', 's', 'f'}; // used to be `gaysex`
 
+    // create
     if((err = gfs_create_file(file_name))){
         printf("could not create file\n");
     }else{
         printf("created file\n");
     }
 
+    // delete
+    if((err = gfs_delete_file(file_name))){
+        printf("could not delete file\n");
+    }else{
+        printf("deleted file\n");
+    }
+
+    // create
     file_name[0] = 'a';
     if((err = gfs_create_file(file_name))){
         printf("could not create file\n");
     }else{
         printf("created file\n");
     }
-
-    // if((err = gfs_delete_file(file_name))){
-    //     printf("could not delete file\n");
-    // }else{
-    //     printf("deleted file\n");
-    // }
 
     // printf("Press enter\n");
     // getchar();
