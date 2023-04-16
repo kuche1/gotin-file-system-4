@@ -22,14 +22,12 @@ int main(void){
         printf("could not create file\n");
     }else{
         printf("created file\n");
-        gfs_sync();
     }
 
     // if((err = gfs_delete_file(file_name))){
     //     printf("could not delete file\n");
     // }else{
     //     printf("deleted file\n");
-    //     gfs_sync();
     // }
 
     // printf("Press enter\n");

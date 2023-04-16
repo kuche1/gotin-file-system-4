@@ -47,8 +47,12 @@ int gfs_init(int disks, char **locations){
         storage.num_disks += 1;
     }
 
-    FILE *master_disk = storage.disks[0].location;
+    int master_disk_idx = 0;
+    FILE *master_disk = storage.disks[master_disk_idx].location;
 
+    // save location
+    storage.file_section.disk_idx = master_disk_idx;
+    storage.file_section.offset = ftell(master_disk);
     // read number of files
     if(FREAD(&storage.num_files, 1, master_disk) != 1){
         err = ERR_FREAD;
@@ -60,12 +64,13 @@ int gfs_init(int disks, char **locations){
         err = ERR_MALLOC;
         goto err;
     }
-    // save location
-    storage.file_section.disk_idx = 0;
-    storage.file_section.offset = ftell(master_disk);
     // read data for each file
     for(int fi=0; fi<storage.num_files; fi++){
         struct file *file = &(storage.files[fi]);
+
+        // save location
+        file->location.disk_idx = master_disk_idx;
+        file->location.offset = ftell(master_disk);
 
         if(FREAD(file->name, FILE_NAME_SIZE, master_disk) != FILE_NAME_SIZE){
             err = ERR_FREAD;
@@ -77,7 +82,7 @@ int gfs_init(int disks, char **locations){
         }
 #ifdef GFS_DEBUG
         if(file->first_block.offset >= 0){
-            printf("loaded 1 file: ");
+            printf("gfs: loaded 1 file: ");
             print_str(FILE_NAME_SIZE, file->name);
             printf("\n");
         }
@@ -194,10 +199,15 @@ int gfs_format(void){
     printf("gfs: format start\n");
 #endif
 
+    int err;
+
     storage.num_files = NUMBER_OF_FILES;
     for(int fi=0; fi<storage.num_files; ++fi){
         struct file *file = &(storage.files[fi]);
         file->first_block.offset = BLOCK_NEXT_FREE; // signify that the file is not allocated
+        if((err = gfs_sync_file(file))){
+            return err;
+        }
     }
 
     for(int di=0; di<storage.num_disks; ++di){
@@ -206,13 +216,16 @@ int gfs_format(void){
             struct block *block = &(disk->blocks[bi]);
             struct block_info *block_info = &(block->info);
             block_info->next.offset = BLOCK_NEXT_FREE; // signify that the block is not allocated
+            if((err = gfs_sync_block(block))){
+                return err;
+            }
         }
     }
 
 #ifdef GFS_DEBUG
-    printf("gfs: format end (sync pending)\n");
+    printf("gfs: format end \n");
 #endif
-    return gfs_sync();
+    return 0;
 }
 
 int gfs_sync(void){
@@ -235,14 +248,12 @@ int gfs_sync(void){
     if(fwrite(&storage.num_files, sizeof(storage.num_files), 1, master_disk) != 1){
         return ERR_FWRITE;
     }
-    // and write files meradata
+    // and write files metadata
     for(int fi=0; fi<storage.num_files; ++fi){
         struct file *file = &(storage.files[fi]);
-        if(FWRITE(file->name, FILE_NAME_SIZE, master_disk) != FILE_NAME_SIZE){
-            return ERR_FWRITE;
-        }
-        if(FWRITE(&file->first_block, 1, master_disk) != 1){
-            return ERR_FWRITE;
+        int err;
+        if((err = gfs_sync_file(file))){
+            return err;
         }
     }
 
@@ -254,14 +265,10 @@ int gfs_sync(void){
 
         for(int bi=0; bi<disk->num_blocks; ++bi){
             struct block *block = &(disk->blocks[bi]);
-            struct block_info *block_info = &(block->info);
-
-            FILE *file = storage.disks[block_info->location.disk_idx].location;
-
-            if(FWRITE(&block_info->next, 1, file) != 1){
-                return ERR_FWRITE;
+            int err;
+            if((err = gfs_sync_block(block))){
+                return err;
             }
-            fseek(file, BLOCKSIZE_DATA, SEEK_CUR);
         }
     }
 
@@ -271,16 +278,33 @@ int gfs_sync(void){
     return 0;
 }
 
+// TODO split into `sync_info` and `sync_data`
 int gfs_sync_block(struct block *block){
-    // struct disk *disk = storage.disks[block->info.disk_idx];
-    // TODO
-    block = block;
+    FILE *f = storage.disks[block->info.location.disk_idx].location;
+    fseek(f, block->info.location.offset, SEEK_SET);
+    
+    if(FWRITE(&block->info.next, 1, f) != 1){
+        return ERR_FWRITE;
+    }
+    if(FWRITE(block->data, BLOCKSIZE_DATA, f) != BLOCKSIZE_DATA){
+        return ERR_FWRITE;
+    }
+
     return 0;
 }
 
+// TODO split into `sync_info` and `sync_data`
 int gfs_sync_file(struct file *file){
-    // TODO
-    file = file;
+    FILE *f = storage.disks[file->location.disk_idx].location;
+    fseek(f, file->location.offset, SEEK_SET);
+
+    if(FWRITE(file->name, FILE_NAME_SIZE, f) != FILE_NAME_SIZE){
+        return ERR_FWRITE;
+    }
+    if(FWRITE(&file->first_block, 1, f) != 1){
+        return ERR_FWRITE;
+    }
+
     return 0;
 }
 

@@ -53,7 +53,7 @@ struct storage{
 
     int num_files;
     struct file *files;
-    struct storage_location file_section; // does not inclide `num_files`
+    struct storage_location file_section; // wil be needed for writing num_files later on
 
     // circular buffer
     int free_blocks_start; // at which idx the next free block is located
@@ -80,15 +80,15 @@ struct block_info{
 
 struct block{
     struct block_info info;
+    char data[BLOCKSIZE_DATA];
 };
 
 ////////////////////////// file
 
 struct file{
     char name[FILE_NAME_SIZE];
-    // int32_t first_block_disk_idx;
-    // disk_offset_t first_block_offset; // value is `BLOCK_NEXT_FREE` when file is unallocated
-    struct storage_location first_block;
+    struct storage_location location; // location of file metadata
+    struct storage_location first_block; // location of first block
 };
 
 ////////////////////////// function
