@@ -15,6 +15,8 @@ run_test: test test_disk_1 test_disk_2
 .PHONY: clear
 clear: clear_test clear_test.o clear_gfs.o clear_test_disk_1 clear_test_disk_2
 
+# testing
+
 test: test.o gfs.o helpers.o
 	${GCC} -o test test.o gfs.o helpers.o
 .PHONY: clear_test
@@ -27,16 +29,20 @@ test.o: test.c gfs.h
 clear_test.o:
 	rm test.o || true
 
-helpers.o: helpers.c helpers.h
-	${GCC} -c helpers.c
-.PHONY: clear_helpers.o
-	rm helpers.o || true
+# library
 
 gfs.o: gfs.c gfs.h
 	${GCC} ${DEBUG} -c gfs.c
 .PHONY: clear_gfs.o
 clear_gfs.o:
 	rm gfs.o || true
+
+helpers.o: helpers.c helpers.h
+	${GCC} -c helpers.c
+.PHONY: clear_helpers.o
+	rm helpers.o || true
+
+# test disks
 
 test_disk_1:
 	dd if=${RNG_SOURCE} of=test_disk_1 bs=${TEST_DISK_SIZE} count=1

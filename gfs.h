@@ -4,6 +4,11 @@
 // use `int32_t` instead of `int` for structs that are written-read from disk
 //
 // create a function that reads the whole disk and checks for nonsensical data
+//
+// what I did with `gfs_file.h` is wrong and needs to be done properly
+
+#ifndef _H_GFS_H_
+#define _H_GFS_H_
 
 #include <stdio.h>
 #include <stdint.h>
@@ -18,6 +23,8 @@
 
 ////////////////////////// enum
 
+// TODO use proper enum for this instead of int
+// and make sure compiler checks type
 enum{
     // generic
     ERR_MALLOC = 1,
@@ -57,6 +64,8 @@ struct storage{
     int last_allocated_disk; // which disk did we last allocate from
     struct disk *disks;
 
+    // TODO intead of using a section for files,
+    //     we could allocate a new file that contains all data for all files
     int num_files;
     struct file *files;
     struct storage_location file_section; // wil be needed for writing num_files later on
@@ -92,16 +101,6 @@ struct block{
     char data[BLOCKSIZE_DATA];
 };
 
-////////////////////////// file
-
-// TODO intead of using a section for files,
-//     we could allocate a new file that contains all data for all files
-struct file{
-    char name[FILE_NAME_SIZE];
-    struct storage_location location; // location of file metadata
-    struct storage_location first_block; // location of first block
-};
-
 ////////////////////////// function
 
 // init, deinit
@@ -112,14 +111,13 @@ int gfs_format(void);
 int gfs_sync(void);
 // specialised syncing
 int gfs_sync_block(struct block *block);
-int gfs_sync_file(struct file *file);
 // read block
 int gfs_read_block(struct block *block, struct storage_location location);
 // find unallocated file, block
 int gfs_find_unallocated_block(struct block *block);
-int gfs_find_unallocated_file(struct file **file); // pointer to pointer is sufficient since all files are loaded int omemory (as of right now)
-// find file by properties
-struct file *gfs_find_file(char file_name[FILE_NAME_SIZE]); // pointer is sufficient since all files are loaded in memory (as of right now)
-// file creation, deletion
-int gfs_create_file(char file_name[FILE_NAME_SIZE]);
-int gfs_delete_file(char file_name[FILE_NAME_SIZE]);
+
+////////////////////////// files
+
+#include "gfs_file.h"
+
+#endif
