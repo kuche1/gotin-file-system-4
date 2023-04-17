@@ -89,18 +89,6 @@ struct disk{
     struct free_blocks_on_disk free_blocks;
 };
 
-////////////////////////// block
-
-struct block_info{
-    struct storage_location location;
-    struct storage_location next;
-};
-
-struct block{
-    struct block_info info;
-    char data[BLOCKSIZE_DATA];
-};
-
 ////////////////////////// function
 
 // init, deinit
@@ -109,15 +97,15 @@ void gfs_deinit(void);
 // formatting and syncing
 int gfs_format(void);
 int gfs_sync(void);
-// specialised syncing
-int gfs_sync_block(struct block *block);
-// read block
-int gfs_read_block(struct block *block, struct storage_location location);
-// find unallocated file, block
-int gfs_find_unallocated_block(struct block *block);
+
+////////////////////////// blocks
+
+#include "gfs_block.h"
 
 ////////////////////////// files
 
 #include "gfs_file.h"
+
+////////////////////////// end
 
 #endif
