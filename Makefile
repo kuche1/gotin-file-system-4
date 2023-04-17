@@ -1,5 +1,12 @@
 
-GCC=gcc -Werror -Wextra -Wall -pedantic
+GCC_EXECUTABLE=gcc
+GCC_GENERIC_FLAGS=-Werror -Wextra -Wall -pedantic
+GCC_RUNTIME_FLAGS=-Warray-bounds -Wformat-overflow -Wnonnull -Wstringop-overflow -Wuninitialized
+GCC_PARANOID_FLAGS=#-Wconversion
+GCC=gcc -Werror -Wextra -Wall -pedantic \
+
+GCC=${GCC_EXECUTABLE} ${GCC_GENERIC_FLAGS} ${GCC_RUNTIME_FLAGS} ${GCC_PARANOID_FLAGS}
+
 DEBUG=-DGFS_DEBUG
 #RNG_SOURCE=/dev/zero
 RNG_SOURCE=/dev/random
