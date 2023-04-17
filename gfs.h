@@ -27,7 +27,8 @@
 // and make sure compiler checks type
 enum{
     // generic
-    ERR_MALLOC = 1,
+    ERR_NONE = 0, // no error
+    ERR_MALLOC,
     ERR_FOPEN,
     ERR_FSEEK,
     ERR_FREAD,
