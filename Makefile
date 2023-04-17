@@ -8,6 +8,7 @@ GCC=gcc -Werror -Wextra -Wall -pedantic \
 GCC=${GCC_EXECUTABLE} ${GCC_GENERIC_FLAGS} ${GCC_RUNTIME_FLAGS} ${GCC_PARANOID_FLAGS}
 
 DEBUG=-DGFS_DEBUG
+
 #RNG_SOURCE=/dev/zero
 RNG_SOURCE=/dev/random
 
