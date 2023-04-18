@@ -72,3 +72,20 @@ int gfs_find_unallocated_block(struct block *block){
 
     return 0;
 }
+
+// int gfs_deallocate_block(struct block_info info){
+//     int err;
+
+//     // sync disk
+//     info.next.offset = BLOCK_NEXT_FREE;
+//     if((err = gfs_sync_block(block))){
+//         return err;
+//     }
+
+//     // update free blocks arr
+//     struct disk *disk = storage[info.location.disk_idx];
+//     disk->free_blocks.offsets[disk->free_blocks.end] = info.location.offset;
+//     disk->free_blocks.end = (disk->free_blocks.end + 1) % disk->free_blocks.size;
+
+//     return 0;
+// }
