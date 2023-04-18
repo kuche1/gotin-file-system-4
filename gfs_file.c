@@ -109,8 +109,6 @@ int gfs_delete_file(char file_name[FILE_NAME_SIZE]){
         return err;
     }
 
-    
-
     if(first_block.offset == BLOCK_NEXT_NONE){ // file doesn't consist of any blocks
         return 0;
     }
