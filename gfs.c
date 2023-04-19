@@ -157,7 +157,7 @@ void gfs_deinit(void){
     for(int i=0; i<storage.num_disks; ++i){
         struct disk *disk = &(storage.disks[i]);
         FCLOSE(disk->location);
-        DEMALLOC(disk->free_blocks.offsets);
+        free_blocks_on_disk_deinit(&disk->free_blocks);
     }
     DEMALLOC(storage.files);
     DEMALLOC(storage.disks);
