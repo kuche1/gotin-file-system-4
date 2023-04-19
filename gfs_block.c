@@ -1,4 +1,20 @@
 
+int gfs_sync_block_info(struct block_info info){
+    FILE *f = storage.disks[info.location.disk_idx].location;
+    if(fseek(f, info.location.offset, SEEK_SET)){
+        return ERR_FSEEK;
+    }
+
+    // write metadata
+    if(FWRITE(&info.next, 1, f) != 1){
+        return ERR_FWRITE;
+    }
+
+    // skip writing regular data
+
+    return 0;
+}
+
 int gfs_sync_block(struct block *block){
     FILE *f = storage.disks[block->info.location.disk_idx].location;
     if(fseek(f, block->info.location.offset, SEEK_SET)){
@@ -73,19 +89,16 @@ int gfs_find_unallocated_block(struct block *block){
     return 0;
 }
 
-// int gfs_deallocate_block(struct block_info info){
-//     int err;
+int gfs_deallocate_block(struct block_info info){
+    int err;
 
-//     // sync disk
-//     info.next.offset = BLOCK_NEXT_FREE;
-//     if((err = gfs_sync_block(block))){
-//         return err;
-//     }
+    // sync
+    info.next.offset = BLOCK_NEXT_FREE;
+    if((err = gfs_sync_block_info(info))){
+        return err;
+    }
 
-//     // update free blocks arr
-//     struct disk *disk = storage[info.location.disk_idx];
-//     disk->free_blocks.offsets[disk->free_blocks.end] = info.location.offset;
-//     disk->free_blocks.end = (disk->free_blocks.end + 1) % disk->free_blocks.size;
+    free_blocks_on_disk_append(&storage.disks[info.location.disk_idx].free_blocks, info.location.offset);
 
-//     return 0;
-// }
+    return 0;
+}

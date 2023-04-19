@@ -10,6 +10,7 @@ struct block{
 };
 
 // sync
+int gfs_sync_block_info(struct block_info info); // TODO use this instead of `gfs_sync_block`
 int gfs_sync_block(struct block *block); // TODO split into `sync_info` and `sync_data`
 
 // read from disk
@@ -19,5 +20,5 @@ int gfs_read_block(struct block *block, struct storage_location location);
 int gfs_find_unallocated_block(struct block *block);
 // returned block is set to `BLOCK_NEXT_NONE` and needs to be synced by caller
 
-int gfs_deallocate_block(struct block *block); // TODO unfinished
+int gfs_deallocate_block(struct block_info info);
 // syncs and updates the free blocks arr on it's own
