@@ -183,15 +183,15 @@ int gfs_format(void){
     for(int di=0; di<storage.num_disks; ++di){
         struct disk *disk = &(storage.disks[di]);
         for(int bi=0; bi<disk->num_blocks; ++bi){
-            struct block block;
+            struct block_info info;
 
-            block.info.location.disk_idx = di;
-            block.info.location.offset = disk->block_section + (bi * BLOCKSIZE_INFO_DATA);
+            info.location.disk_idx = di;
+            info.location.offset = disk->block_section + (bi * BLOCKSIZE_INFO_DATA);
 
-            // block.info.next.disk_idx = undefined;
-            block.info.next.offset = BLOCK_NEXT_FREE;
+            // info.next.disk_idx = undefined;
+            info.next.offset = BLOCK_NEXT_FREE;
 
-            if((err = gfs_sync_block(&block))){
+            if((err = gfs_sync_block_info(info))){
                 return err;
             }
         }
