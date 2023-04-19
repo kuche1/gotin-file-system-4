@@ -114,13 +114,9 @@ int gfs_init(int disks, char **locations){
 
         int blocks = remaining_space / BLOCKSIZE_INFO_DATA;
 
+        
         // init free blocks
-        disk->free_blocks.start = 0;
-        disk->free_blocks.end = 0;
-        disk->free_blocks.size = blocks;
-
-        if(!MALLOC_AND_SET(disk->free_blocks.offsets, blocks)){ // assume all blocks could potentially be free
-            err = ERR_MALLOC;
+        if((err = free_blocks_on_disk_init(&disk->free_blocks, blocks))){
             goto err;
         }
 
@@ -140,8 +136,7 @@ int gfs_init(int disks, char **locations){
             }
 
             if(block_info.next.offset == BLOCK_NEXT_FREE){
-                disk->free_blocks.offsets[disk->free_blocks.end] = block_info.location.offset;
-                disk->free_blocks.end += 1;
+                free_blocks_on_disk_append(&disk->free_blocks, block_info.location.offset);
             }
 
             disk->num_blocks += 1;

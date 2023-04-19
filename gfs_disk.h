@@ -15,4 +15,5 @@ struct disk{
     struct free_blocks_on_disk free_blocks;
 };
 
+int free_blocks_on_disk_init(struct free_blocks_on_disk *fb, int size);
 void free_blocks_on_disk_append(struct free_blocks_on_disk *fb, disk_offset_t item);

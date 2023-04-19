@@ -103,7 +103,6 @@ int gfs_delete_file(char file_name[FILE_NAME_SIZE]){
 
     struct storage_location first_block = file->first_block;
 
-    // TODO put this block and all other freed blocks into the array of free blocks
     file->first_block.offset = BLOCK_NEXT_FREE; // mark file as deallocated
     if((err = gfs_sync_file(file))){ // sync
         return err;
