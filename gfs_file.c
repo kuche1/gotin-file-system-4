@@ -114,17 +114,15 @@ int gfs_delete_file(char file_name[FILE_NAME_SIZE]){
     }
 
     struct block block;
-    if((err = gfs_read_block(&block, file->first_block))){ // TODO gfs_read_block_info
+    if((err = gfs_read_block(&block, file->first_block))){ // TODO create and use `gfs_read_block_info` instead
         return err;
     }
 
     while(1){
         struct storage_location next = block.info.next;
 
-        // deallocate
-        block.info.next.offset = BLOCK_NEXT_FREE;
-        // sync
-        if((err = gfs_sync_block(&block))){
+        // deallocate block
+        if((err = gfs_deallocate_block(block.info))){
             return err;
         }
 
