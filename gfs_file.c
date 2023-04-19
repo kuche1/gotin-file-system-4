@@ -38,6 +38,7 @@ struct file *gfs_find_file(char file_name[FILE_NAME_SIZE]){
     return NULL;
 }
 
+// TODO should we sync the block first or the file? think about this
 int gfs_create_file(char file_name[FILE_NAME_SIZE]){
     int err;
 
@@ -64,7 +65,7 @@ int gfs_create_file(char file_name[FILE_NAME_SIZE]){
 
     // find unallocated disk block
     struct block block;
-    if((err = gfs_find_unallocated_block(&block))){
+    if((err = gfs_find_unallocated_block(&block))){ // TODO have a function that just returns the metadata
 #ifdef GFS_DEBUG
         printf("gfs: err: problem with finding unallocated block\n");
         return err;
@@ -77,7 +78,7 @@ int gfs_create_file(char file_name[FILE_NAME_SIZE]){
     file->first_block = block.info.location;
 
     // sync
-    if((err = gfs_sync_block(&block))){ // TODO should we sync the block first or the file? think about this
+    if((err = gfs_sync_block_info(block.info))){
         return err;
     }
     if((err = gfs_sync_file(file))){

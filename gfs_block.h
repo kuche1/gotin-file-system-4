@@ -10,8 +10,8 @@ struct block{
 };
 
 // sync
-int gfs_sync_block_info(struct block_info info); // TODO use this instead of `gfs_sync_block`
-int gfs_sync_block(struct block *block); // TODO split into `sync_info` and `sync_data`
+int gfs_sync_block_info(struct block_info info);
+int gfs_sync_block_data(struct block *block);
 
 // read from disk
 int gfs_read_block(struct block *block, struct storage_location location);

@@ -15,15 +15,18 @@ int gfs_sync_block_info(struct block_info info){
     return 0;
 }
 
-int gfs_sync_block(struct block *block){
+int gfs_sync_block_data(struct block *block){
     FILE *f = storage.disks[block->info.location.disk_idx].location;
     if(fseek(f, block->info.location.offset, SEEK_SET)){
         return ERR_FSEEK;
     }
     
-    if(FWRITE(&block->info.next, 1, f) != 1){
-        return ERR_FWRITE;
+    // skip writing metadata
+    if(fseek(f, sizeof(block->info.next), SEEK_CUR)){
+        return ERR_FSEEK;
     }
+
+    // write regular data
     if(FWRITE(block->data, BLOCKSIZE_DATA, f) != BLOCKSIZE_DATA){
         return ERR_FWRITE;
     }
