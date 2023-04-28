@@ -14,8 +14,10 @@
 #include <stdint.h>
 #include <inttypes.h>
 
-#define FILE_NAME_SIZE 5
+#define FILE_NAME_SIZE 5 // TODO this needs to be changed for a dynamic folder name
 #define NUMBER_OF_FILES 30 // TODO this is super bad, but it will have to do for now
+
+#define FOLDER_NAME_SIZE FILE_NAME_SIZE
 
 #define BLOCKSIZE_INFO (sizeof(struct storage_location))
 #define BLOCKSIZE_DATA 512 // seems reasonable, might need to change this in the future, or might make it a customizable value
@@ -92,6 +94,10 @@ int gfs_sync(void);
 ////////////////////////// disk
 
 #include "gfs_disk.h"
+
+////////////////////////// folder
+
+#include "gfs_folder.h"
 
 ////////////////////////// end
 

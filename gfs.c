@@ -215,4 +215,8 @@ int gfs_format(void){
 
 #include "gfs_disk.c"
 
+////////////////////////// folder
+
+#include "gfs_folder.c"
+
 ////////////////////////// end

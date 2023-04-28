@@ -39,7 +39,7 @@ clear_test.o:
 
 # library
 
-gfs.o: Makefile gfs.c gfs.h gfs_block.c gfs_block.h gfs_file.c gfs_file.h gfs_disk.c gfs_disk.h
+gfs.o: Makefile gfs.c gfs.h gfs_block.c gfs_block.h gfs_file.c gfs_file.h gfs_disk.c gfs_disk.h gfs_folder.c gfs_folder.h
 	${GCC} ${DEBUG} -c gfs.c
 .PHONY: clear_gfs.o
 clear_gfs.o:
